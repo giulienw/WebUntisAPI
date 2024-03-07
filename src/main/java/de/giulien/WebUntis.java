@@ -3,6 +3,7 @@ package de.giulien;
 import de.giulien.models.IWebUntisResponse;
 import de.giulien.models.WebUntisConfig;
 import de.giulien.models.WebUntisException;
+import de.giulien.models.WebUntisRoom;
 import de.giulien.models.WebUntisUser;
 
 import java.io.DataOutputStream;
@@ -13,6 +14,7 @@ import java.net.*;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
@@ -44,10 +46,10 @@ public class WebUntis {
         return user;
     }
 
-    public String GetRooms() {
+    public ArrayList<WebUntisRoom> GetRooms() {
         if (!ValidateSession())
             return null;
-        return Request(String.class, "getRooms", new HashMap<>());
+        return RequestList(WebUntisRoom.class, "getRooms", new HashMap<>());
     }
 
     public boolean ValidateSession() {
@@ -74,8 +76,7 @@ public class WebUntis {
 
             if (res.contains("error"))
                 APIErrorHandling(res);
-            if (res.contains("["))
-                HandleListResponse(res);
+
             String[] arr = res.substring(res.indexOf("\"result\":"))
                     .replace("\"", "").replaceAll("result:", "")
                     .replace("{", "").replace("}", "")
@@ -107,23 +108,61 @@ public class WebUntis {
         }
     }
 
-    private void HandleListResponse(String res) {
-        String arr[] = res.substring(res.indexOf("\"result\":"))
-                .replace("\"", "").replaceAll("result:", "")
-                .replace("[", "").replace("]", "")
-                .replace("{", "")
-                .replace("}}", "")
-                .split("},");
+    private <TResponse> ArrayList<TResponse> RequestList(Class<TResponse> tResponse, String method,
+            HashMap<String, String> params) {
+        try {
+            String url = String.format("https://%s/WebUntis/jsonrpc.do?school=%s", _config.Server, _config.School);
+            String param = Utils.ConvertParams(method, params);
+            HttpRequest request = (HttpRequest) HttpRequest.newBuilder(new URI(url))
+                    .header("Cookie", "JSESSIONID=" + _session + "; school=" + _config.School)
+                    .POST(HttpRequest.BodyPublishers.ofString(param))
+                    .build();
+            String res = _client.send(request, HttpResponse.BodyHandlers.ofString()).body();
 
-        HashMap<String, String> result = new HashMap<>();
-        for (int i = 0; i < arr.length; i++) {
-            String[] s = arr[i].split(":");
-            if (s.length <= 1)
-                return (TResponse) s[0];
-            result.put(s[0], s[1]);
+            if (res.contains("error"))
+                APIErrorHandling(res);
+
+            String[] arr = res.substring(res.indexOf("\"result\":"))
+                    .replace("\"", "").replaceAll("result:", "")
+                    .replace("[", "").replace("]", "")
+                    .replace("{", "")
+                    .replace("}}", "")
+                    .split("},");
+
+            ArrayList<TResponse> response = new ArrayList();
+
+            for (int i = 0; i < arr.length; i++) {
+                HashMap<String, String> result = new HashMap<>();
+                String[] current = arr[i].split(",");
+                for (int j = 0; j < current.length; j++) {
+                    String[] s = current[j].split(":");
+                    if (s.length == 1) {
+                        result.put(s[0], "");
+                    } else {
+                        result.put(s[0], s[1]);
+                    }
+                }
+                response.add(tResponse.getDeclaredConstructor(HashMap.class).newInstance(result));
+            }
+
+            return response;
+        } catch (URISyntaxException e) {
+            throw new RuntimeException(e);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        } catch (NoSuchMethodException e) {
+            throw new RuntimeException(e);
+        } catch (InvocationTargetException e) {
+            throw new RuntimeException(e);
+        } catch (InstantiationException e) {
+            throw new RuntimeException(e);
+        } catch (IllegalAccessException e) {
+            throw new RuntimeException(e);
+        } catch (WebUntisException e) {
+            throw new RuntimeException(e);
         }
-
-        System.out.println(arr[0]);
     }
 
     private void APIErrorHandling(String res) throws WebUntisException {
