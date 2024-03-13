@@ -44,7 +44,7 @@ public class WebUntis {
         return user;
     }
 
-    public ArrayList<WebUntisRoom> GetRooms() {
+    public List<WebUntisRoom> GetRooms() {
         if (!ValidateSession())
             return null;
         return RequestList(WebUntisRoom.class, "getRooms", new HashMap<>());
@@ -62,11 +62,11 @@ public class WebUntis {
         }
     }
 
-    public ArrayList<WebUntisLesson> GetStundenplan(String id, LocalDate start, LocalDate end, ElementTyp elementTyp) {
+    public List<WebUntisLesson> GetStundenplan(String id, LocalDate start, LocalDate end, ElementTyp elementTyp) {
         return RequestTimetable(id, start, end, elementTyp);
     }
 
-    private ArrayList<WebUntisLesson> RequestTimetable(String id, LocalDate start, LocalDate end, ElementTyp elementTyp) {
+    private List<WebUntisLesson> RequestTimetable(String id, LocalDate start, LocalDate end, ElementTyp elementTyp) {
         HashMap<String, ?> options = new HashMap<>() {{
             put("startDate", start.format(DateTimeFormatter.ofPattern("yyyyMMdd")));
             put("endDate", end.format(DateTimeFormatter.ofPattern("yyyyMMdd")));
@@ -105,7 +105,7 @@ public class WebUntis {
 
             String[] arr = arrs.split("},id:");
 
-            ArrayList<WebUntisLesson> response = new ArrayList();
+            List<WebUntisLesson> response = new List();
 
             for (int i = 0; i < arr.length; i++) {
                 HashMap<String, String> result = new HashMap<>();
@@ -137,7 +137,7 @@ public class WebUntis {
                         result.put(s[0], s[1]);
                     }
                 }
-                response.add(WebUntisLesson.class.getDeclaredConstructor(HashMap.class).newInstance(result));
+                response.append(WebUntisLesson.class.getDeclaredConstructor(HashMap.class).newInstance(result));
             }
 
             return response;
@@ -160,7 +160,7 @@ public class WebUntis {
         }
     }
 
-    public ArrayList<WebUntisTimegrid> GetTimegrid() {
+    public List<WebUntisTimegrid> GetTimegrid() {
         try {
             String url = String.format("https://%s/WebUntis/jsonrpc.do?school=%s", _config.Server, _config.School);
             String param = Utils.ConvertParams("getTimegridUnits", new HashMap<>());
@@ -180,7 +180,7 @@ public class WebUntis {
                     .replace("}}", "")
                     .split("]");
 
-            ArrayList<WebUntisTimegrid> response = new ArrayList();
+            List<WebUntisTimegrid> response = new List();
 
             for (int i = 0; i < arr.length; i++) {
                 HashMap<String, String> result = new HashMap<>();
@@ -196,7 +196,7 @@ public class WebUntis {
                         result.put(s[0], withoutDay);
                     }
                 }
-                response.add(WebUntisTimegrid.class.getDeclaredConstructor(HashMap.class).newInstance(result));
+                response.append(WebUntisTimegrid.class.getDeclaredConstructor(HashMap.class).newInstance(result));
             }
 
             return response;
@@ -219,7 +219,7 @@ public class WebUntis {
         }
     }
 
-    public ArrayList<WebUntisStudent> GetStudents() {
+    public List<WebUntisStudent> GetStudents() {
         return RequestList(WebUntisStudent.class, "getStudents", new HashMap<>());
     }
 
@@ -267,7 +267,7 @@ public class WebUntis {
         }
     }
 
-    private <TResponse> ArrayList<TResponse> RequestList(Class<TResponse> tResponse, String method,
+    private <TResponse> List<TResponse> RequestList(Class<TResponse> tResponse, String method,
             HashMap<String, ?> params) {
         try {
             String url = String.format("https://%s/WebUntis/jsonrpc.do?school=%s", _config.Server, _config.School);
@@ -288,7 +288,7 @@ public class WebUntis {
                     .replace("}}", "")
                     .split("},");
 
-            ArrayList<TResponse> response = new ArrayList();
+            List<TResponse> response = new List();
 
             for (int i = 0; i < arr.length; i++) {
                 HashMap<String, String> result = new HashMap<>();
@@ -301,7 +301,7 @@ public class WebUntis {
                         result.put(s[0], s[1]);
                     }
                 }
-                response.add(tResponse.getDeclaredConstructor(HashMap.class).newInstance(result));
+                response.append(tResponse.getDeclaredConstructor(HashMap.class).newInstance(result));
             }
 
             return response;

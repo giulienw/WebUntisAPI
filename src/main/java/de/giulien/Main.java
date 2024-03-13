@@ -9,10 +9,12 @@ public class Main {
     public static void main(String[] args) {
         WebUntis untis = new WebUntis("Giuli.Chow","MXQz4#-t");
         WebUntisUser s = untis.Login();
-        ArrayList<WebUntisLesson> timetable = untis.GetStundenplan(s.PersonId, LocalDate.of(2024,3, 14), LocalDate.of(2024,3, 14), ElementTyp.PERSON);
-        ArrayList<WebUntisRoom> rooms = untis.GetRooms();
-        for(WebUntisRoom w : rooms) {
-            System.out.println(w.toString());
+        List<WebUntisLesson> timetable = untis.GetStundenplan(s.PersonId, LocalDate.of(2024,3, 14), LocalDate.of(2024,3, 14), ElementTyp.PERSON);
+        List<WebUntisRoom> rooms = untis.GetRooms();
+        timetable.toFirst();
+        while(timetable.hasAccess()) {
+            System.out.println(timetable.getContent().toString());
+            timetable.next();
         }
     }
 }
