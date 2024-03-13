@@ -1,8 +1,10 @@
 package de.giulien.models;
 
+import de.giulien.interfaces.IWebUntisResponse;
+
 import java.util.HashMap;
 
-public class WebUntisUser implements IWebUntisResponse{
+public final class WebUntisUser implements IWebUntisResponse {
     public String PersonId;
     public String KlassenId;
     public int PersonType;

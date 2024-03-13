@@ -1,10 +1,6 @@
 package de.giulien;
 
-import de.giulien.models.IWebUntisResponse;
-import de.giulien.models.WebUntisConfig;
-import de.giulien.models.WebUntisException;
-import de.giulien.models.WebUntisRoom;
-import de.giulien.models.WebUntisUser;
+import de.giulien.models.*;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -14,6 +10,8 @@ import java.net.*;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -64,7 +62,168 @@ public class WebUntis {
         }
     }
 
-    private <TResponse> TResponse Request(Class<TResponse> tResponse, String method, Map<String, String> params) {
+    public ArrayList<WebUntisLesson> GetStundenplan(String id, LocalDate start, LocalDate end, ElementTyp elementTyp) {
+        return RequestTimetable(id, start, end, elementTyp);
+    }
+
+    private ArrayList<WebUntisLesson> RequestTimetable(String id, LocalDate start, LocalDate end, ElementTyp elementTyp) {
+        HashMap<String, ?> options = new HashMap<>() {{
+            put("startDate", start.format(DateTimeFormatter.ofPattern("yyyyMMdd")));
+            put("endDate", end.format(DateTimeFormatter.ofPattern("yyyyMMdd")));
+            put("element", String.format("{\"type\":\"%s\", \"id\":\"%s\"}",elementTyp.toString(), id));
+            put("onlyBaseTimetable", "False");
+            put("showInfo","True");
+            put("showSubstText", "True");
+            put("showLsText", "True");
+            put("showLsNumber", "True");
+            put("showStudentgroup", "True");
+            put("showBooking", "True");
+            put("klasseFields","[\"id\", \"name\", \"longname\", \"externalkey\"]");
+            put("roomFields","[\"id\", \"name\", \"longname\", \"externalkey\"]");
+            put("subjectFields","[\"id\", \"name\", \"longname\", \"externalkey\"]");
+            put("teacherFields","[\"id\", \"name\", \"longname\", \"externalkey\"]");
+        }};
+        HashMap<String, String> params = new HashMap<>();
+        params.put("options", String.format("{%s}",Utils.getFormDataAsString(options)));
+        try {
+            String url = String.format("https://%s/WebUntis/jsonrpc.do?school=%s", _config.Server, _config.School);
+            String param = Utils.ConvertParams("getTimetable", params);
+            HttpRequest request = (HttpRequest) HttpRequest.newBuilder(new URI(url))
+                    .header("Cookie", "JSESSIONID=" + _session + "; school=" + _config.School)
+                    .POST(HttpRequest.BodyPublishers.ofString(param))
+                    .build();
+            String res = _client.send(request, HttpResponse.BodyHandlers.ofString()).body();
+
+            if (res.contains("error"))
+                APIErrorHandling(res);
+
+            String arrs = res.substring(res.indexOf("\"result\":"))
+                    .replace("\"", "").replaceAll("result:", "")
+                    .replace("[", "").replace("]", "")
+                    .replace("{", "")
+                    .replace("}}", "");
+
+            String[] arr = arrs.split("},id:");
+
+            ArrayList<WebUntisLesson> response = new ArrayList();
+
+            for (int i = 0; i < arr.length; i++) {
+                HashMap<String, String> result = new HashMap<>();
+                String[] current = arr[i].split(",");
+                boolean inSub = false;
+                String d = Arrays.toString(current);
+                for (int j = 0; j < current.length; j++) {
+                    String[] s = current[j].split(":");
+                    if (j == 0) {
+                        String idStr = Arrays.toString(s)
+                                .replace("id,","")
+                                .replace("]", "")
+                                .replace("[","");
+                        result.put("id", idStr);
+                    } else if(s[0].startsWith("kl") || s[0].startsWith("su") || s[0].startsWith("ro") || s[0].startsWith("te")) {
+                        inSub = true;
+                        int length = d.length();
+                        int startSub = d.indexOf(s[0]);
+                        String subObject = d.substring(startSub);
+                        int endSub = subObject.indexOf("}");
+                        d = d.substring(endSub);
+                        result.put(s[0], subObject
+                                .substring(0,endSub)
+                                .replace("}","")
+                                .replace(String.format("%s:",s[0]),""));
+                    } else if(current[j].contains("}")) {
+                        inSub = false;
+                    } else if(!inSub) {
+                        result.put(s[0], s[1]);
+                    }
+                }
+                response.add(WebUntisLesson.class.getDeclaredConstructor(HashMap.class).newInstance(result));
+            }
+
+            return response;
+        } catch (URISyntaxException e) {
+            throw new RuntimeException(e);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        } catch (NoSuchMethodException e) {
+            throw new RuntimeException(e);
+        } catch (InvocationTargetException e) {
+            throw new RuntimeException(e);
+        } catch (InstantiationException e) {
+            throw new RuntimeException(e);
+        } catch (IllegalAccessException e) {
+            throw new RuntimeException(e);
+        } catch (WebUntisException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public ArrayList<WebUntisTimegrid> GetTimegrid() {
+        try {
+            String url = String.format("https://%s/WebUntis/jsonrpc.do?school=%s", _config.Server, _config.School);
+            String param = Utils.ConvertParams("getTimegridUnits", new HashMap<>());
+            HttpRequest request = (HttpRequest) HttpRequest.newBuilder(new URI(url))
+                    .header("Cookie", "JSESSIONID=" + _session + "; school=" + _config.School)
+                    .POST(HttpRequest.BodyPublishers.ofString(param))
+                    .build();
+            String res = _client.send(request, HttpResponse.BodyHandlers.ofString()).body();
+
+            if (res.contains("error"))
+                APIErrorHandling(res);
+
+            String[] arr = res.substring(res.indexOf("\"result\":"))
+                    .replace("\"", "").replaceAll("result:", "")
+                    .replace("[", "")
+                    .replace("{", "").replace("}", "")
+                    .replace("}}", "")
+                    .split("]");
+
+            ArrayList<WebUntisTimegrid> response = new ArrayList();
+
+            for (int i = 0; i < arr.length; i++) {
+                HashMap<String, String> result = new HashMap<>();
+                String[] current = arr[i].split(",");
+                String lastDay = "";
+                for (int j = 0; j < current.length; j++) {
+                    String[] s = current[j].split(":");
+                    if (s[0].equals("day")) {
+                        result.put(s[0], s[1]);
+                        lastDay = s[1];
+                    } else if(s.length == 3) {
+                        String withoutDay = Arrays.toString(current).replace("[", "").replace("]", "").replace(String.format("day:%s,",lastDay), "").replace("timeUnits:", "");
+                        result.put(s[0], withoutDay);
+                    }
+                }
+                response.add(WebUntisTimegrid.class.getDeclaredConstructor(HashMap.class).newInstance(result));
+            }
+
+            return response;
+        } catch (URISyntaxException e) {
+            throw new RuntimeException(e);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        } catch (NoSuchMethodException e) {
+            throw new RuntimeException(e);
+        } catch (InvocationTargetException e) {
+            throw new RuntimeException(e);
+        } catch (InstantiationException e) {
+            throw new RuntimeException(e);
+        } catch (IllegalAccessException e) {
+            throw new RuntimeException(e);
+        } catch (WebUntisException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public ArrayList<WebUntisStudent> GetStudents() {
+        return RequestList(WebUntisStudent.class, "getStudents", new HashMap<>());
+    }
+
+    private <TResponse> TResponse Request(Class<TResponse> tResponse, String method, HashMap<String, String> params) {
         try {
             String url = String.format("https://%s/WebUntis/jsonrpc.do?school=%s", _config.Server, _config.School);
             String param = Utils.ConvertParams(method, params);
@@ -109,7 +268,7 @@ public class WebUntis {
     }
 
     private <TResponse> ArrayList<TResponse> RequestList(Class<TResponse> tResponse, String method,
-            HashMap<String, String> params) {
+            HashMap<String, ?> params) {
         try {
             String url = String.format("https://%s/WebUntis/jsonrpc.do?school=%s", _config.Server, _config.School);
             String param = Utils.ConvertParams(method, params);
