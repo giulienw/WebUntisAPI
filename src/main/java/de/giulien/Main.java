@@ -1,8 +1,6 @@
 package de.giulien;
 
 import java.time.LocalDate;
-import java.util.ArrayList;
-
 import de.giulien.models.*;
 
 public class Main {

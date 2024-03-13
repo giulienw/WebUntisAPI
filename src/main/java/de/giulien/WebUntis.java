@@ -1,10 +1,7 @@
 package de.giulien;
 
 import de.giulien.models.*;
-
-import java.io.DataOutputStream;
 import java.io.IOException;
-import java.lang.reflect.Array;
 import java.lang.reflect.InvocationTargetException;
 import java.net.*;
 import java.net.http.HttpClient;
@@ -12,10 +9,8 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
-import java.util.Map;
 
 public class WebUntis {
     private WebUntisConfig _config;
