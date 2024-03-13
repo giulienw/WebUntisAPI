@@ -1,7 +1,5 @@
 package de.giulien.models;
 
-import de.giulien.WebUntis;
-
 import java.util.HashMap;
 
 public final class WebUntisRoom extends WebUntisBaseModel {
